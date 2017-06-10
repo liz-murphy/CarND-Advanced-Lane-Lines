@@ -15,18 +15,6 @@ The goals / steps of this project are the following:
 * Warp the detected lane boundaries back onto the original image.
 * Output visual display of the lane boundaries and numerical estimation of lane curvature and vehicle position.
 
-[//]: # (Image References)
-
-[image1]: ./output_images/test_undist.jpg "Undistorted"
-[image2]: ./output_images/undisored_img.jpg "Undistorted image"
-[image3]: ./output_images/original_img.jpg "Original image"
-
-[image4]: ./output_images/combined_threshold.jpg "Color and Gradient Thresholding"
-
-[image5]: ./output_images/perspective_source.png "Perspective Transform"
-
-[video1]: ./project_video.mp4 "Video"
-
 ## [Rubric](https://review.udacity.com/#!/rubrics/571/view) Points
 
 ### Here I will consider the rubric points individually and describe how I addressed each point in my implementation.  
@@ -52,16 +40,15 @@ I loop through the supplied calibration images and add the image point and objec
 - Now that I know the correspondence between the object points and the image points, I can make use of OpenCV's calibrateCamera(...) function to find the camera matrix and the distortion coefficients.
 
 I applied this distortion correction to the test image using the `cv2.undistort()` function and obtained this result: 
-
-![Undistored checkerboard][image1]
+<img src="/camera_cal/calibration3.jpg" alt="alt text" width="300" >
+<img src="/output_images/test_undist.jpg" alt="alt text" width="300" >
 
 ### Pipeline (single images)
 
 #### 1. Provide an example of a distortion-corrected image.
 
 - I first apply the distortion correction learned from the calibration to the test images. This can be found in Section 3 of the ipython notebook. Here is an example output image shown next to the original image.
-![Original image][image3]
-![Undistorted test image][image2]
+<img src="/output_images/keep/undistored_img.jpg" width="300"><img src="/output_images/keep/original_img.jpg" width="300">
 
 #### 2. Describe how (and identify where in your code) you used color transforms, gradients or other methods to create a thresholded binary image.  Provide an example of a binary image result.
 
@@ -75,15 +62,15 @@ The color thresholding selects:
 
 The output at this stage looks like this:
 
-![Color and Gradient Thresholding][image4]
+<img src="/output_images/combined_threshold.jpg">
 
 #### 3. Describe how (and identify where in your code) you performed a perspective transform and provide an example of a transformed image.
 
- The `perspective_rectify()` function is in Section 5 of the iPython notebook. It takes as input an image (`img`).  I chose to the hardcode the source and destination points - these are detailed in the function itself.
+ The `perspective_rectify()` function is in Section 5 of the iPython notebook. It takes as input an image.  I chose to hardcode the source and destination points - these are detailed in the function itself.
 
 I verified that my perspective transform was working as expected by drawing the `src` and `dst` points onto a test image and its warped counterpart to verify that the lines appear parallel in the warped image.
 
-![Perspective Transform][image5]
+<img src="/output_images/perspective_source.png">
 
 #### 4. Describe how (and identify where in your code) you identified lane-line pixels and fit their positions with a polynomial?
 
@@ -99,18 +86,22 @@ The raw output of the lane line detection is then passed to polyfit_lane_lines(.
 - the points are then combined with the output of the last n (n=5) images, which are stored in the Lane object in a deque.
 - the combined points and their weights are fitted with a second "best-fit" polynomial. It is this line that I use to display the lane lines on the final image.
 
-
-![alt text][image5]
+<img src="/output_images/perspective_warp_img.jpg" width=300><img src="/output_images/lane_finding_img.jpg" width=300>
 
 #### 5. Describe how (and identify where in your code) you calculated the radius of curvature of the lane and the position of the vehicle with respect to center.
 
-I did this in lines # through # in my code in `my_other_file.py`
+I used the equations [here|http://www.intmath.com/applications-differentiation/8-radius-curvature.php] to find the radius of curvature for each lane line.
+- I made a minor modification to deal with divide-by-zero issues on straight lines
+- I eyeballed some warped images to come up with a pixel-to-m conversion. My lane width tended to average 890 pixels (3.7m in the real world), and the dashed lane lines were around 110 pixels (3m in the real world).
+
+To find the lane position:
+- I used the x-intercept of my best fit line with the bottom of the image. The average of the left and right lines gives the center of the lane. The difference between that, and the midpoint of the image, is the distance of the vehicle from the center of the lane. (This all assumes the camera is mounted in the center of the vehicle).
 
 #### 6. Provide an example image of your result plotted back down onto the road such that the lane area is identified clearly.
 
-I implemented this step in lines # through # in my code in `yet_another_file.py` in the function `map_lane()`.  Here is an example of my result on a test image:
+Here's an image which details the lane curvature, width and fills in the detected lane.
 
-![alt text][image6]
+<img src="/output_images/total_pipeline.png" width=300>
 
 ---
 
@@ -118,7 +109,7 @@ I implemented this step in lines # through # in my code in `yet_another_file.py`
 
 #### 1. Provide a link to your final video output.  Your pipeline should perform reasonably well on the entire project video (wobbly lines are ok but no catastrophic failures that would cause the car to drive off the road!).
 
-Here's a [link to my video result](./project_video.mp4)
+Here's a [link to my video result](./output_images/project_video.mp4)
 
 ---
 
@@ -126,5 +117,22 @@ Here's a [link to my video result](./project_video.mp4)
 
 #### 1. Briefly discuss any problems / issues you faced in your implementation of this project.  Where will your pipeline likely fail?  What could you do to make it more robust?
 
-- The pipeline is obviously nowhere near real time.
-- It 
+Difficulties:
+- sensitivity to color, lighting, detecting the railing as a lane line!
+
+When will it fail:
+- different times of day when the color and lighting changes
+- rain, snow
+- different road geometries
+- occlusions in heavy traffic
+- dirt on the camera lens
+- changes to calibration, i.e. you can't move this camera very far without breaking the assumptions that underpin the perspective warping.
+- it's also nowhere near real time.
+
+To make it more robust:
+- first step would be to look at how I create the birds-eye view. I would pick the source points for the perspective warp
+dynamically, based on the current image properties and a rudimentary estimate of where the lines are from a first pass of the lane detector.
+- implement multiple color/gradient filters and dynamically choose the best one.
+- more sophisticated tracking. Right now I just weight individual points by their distance to the fitted line.
+
+
